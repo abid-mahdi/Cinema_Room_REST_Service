@@ -25,6 +25,7 @@ public class Seat {
     private int price;
 
     public String returnSeat() {
+        setTaken(false);
         return String.format("{\n" +
                 "    \"returned_ticket\": {\n" +
                 "        \"row\": %s,\n" +
@@ -35,6 +36,7 @@ public class Seat {
     }
 
     public String bookSeat() {
+        setTaken(true);
         return String.format("{\n" +
                         "    \"token\": \"%s\",\n" +
                         "    \"ticket\": {\n" +

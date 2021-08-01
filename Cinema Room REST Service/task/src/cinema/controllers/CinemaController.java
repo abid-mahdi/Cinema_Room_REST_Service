@@ -3,9 +3,12 @@ package cinema.controllers;
 import cinema.entities.Cinema;
 import cinema.entities.Seat;
 import cinema.entities.Token;
+import cinema.exceptions.JSONErrors;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
 @RestController
@@ -18,55 +21,40 @@ public class CinemaController {
         return cinema;
     }
 
-    @PostMapping("/purchase")
-    public String checkSeat(HttpServletResponse response, @RequestBody Seat seat) {
-        response.addHeader("Content-type", "application/json");
-
-        if (seat.getRow() > 9 || seat.getColumn() > 9 || seat.getRow() < 1 || seat.getColumn() < 1)  {
-            response.setStatus(400);
-            return "{ \"error\": \"The number of a row or a column is out of bounds!\" }";
-        }
+    @PostMapping(path = "/purchase", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> checkSeat(@RequestBody Seat seat) {
+        if (seat.getRow() > 9 || seat.getColumn() > 9 || seat.getRow() < 1 || seat.getColumn() < 1)
+            return new ResponseEntity<>(JSONErrors.outOfBounds(),
+                    HttpStatus.BAD_REQUEST);
 
         Seat[] seats = cinema.getSeats();
         int arrPos = cinema.getArrPos(seat.getRow(), seat.getColumn());
         Seat seatToBook = seats[arrPos];
 
-        if (seatToBook.isTaken()) {
-            response.setStatus(400);
-            return "{ \"error\": \"The ticket has been already purchased!\" }";
-        }
+        if (seatToBook.isTaken())
+            return new ResponseEntity<>(JSONErrors.alreadyPurchased(),
+                    HttpStatus.BAD_REQUEST);
 
-        seatToBook.setTaken(true);
-        return seatToBook.bookSeat();
+        return new ResponseEntity<>(seatToBook.bookSeat(), HttpStatus.OK);
     }
 
-    @PostMapping("/return")
-    public String returnToken(HttpServletResponse response, @RequestBody Token token) {
-        response.addHeader("Content-type", "application/json");
-
+    @PostMapping(path = "/return", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> returnToken(@RequestBody Token token) {
         Optional<Seat> seat = cinema.findSeat(token);
 
-        if (seat.isEmpty()) {
-            response.setStatus(400);
-            return "{ \"error\": \"Wrong token!\" }";
-        }
+        if (seat.isEmpty())
+            return new ResponseEntity<>(JSONErrors.wrongToken(), HttpStatus.BAD_REQUEST);
 
         Seat s = seat.get();
-        s.setTaken(false);
-        return s.returnSeat();
+        return new ResponseEntity<>(s.returnSeat(), HttpStatus.OK);
     }
 
-    @PostMapping(path="/stats")
-    public String getStats(HttpServletResponse response,
-                           @RequestParam(required = false) @RequestBody String password) {
-        response.addHeader("Content-type", "application/json");
+    @PostMapping(path = "/stats", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> getStats(@RequestParam(required = false) @RequestBody String password) {
+        if (password == null || !password.equals("super_secret"))
+            return new ResponseEntity<>(JSONErrors.wrongPassword(), HttpStatus.UNAUTHORIZED);
 
-        if (password == null || !password.equals("super_secret")) {
-            response.setStatus(401);
-            return "{ \"error\": \"The password is wrong!\" }";
-        }
-
-       return cinema.getStats();
+       return new ResponseEntity<>(cinema.getStats(), HttpStatus.OK);
     }
 
 }

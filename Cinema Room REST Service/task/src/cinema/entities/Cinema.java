@@ -36,7 +36,6 @@ public class Cinema {
     @Getter
     private Seat[] seats;
 
-
     @JsonIgnore
     public Optional<Seat> findSeat(Token token) {
         return Arrays.stream(seats)
